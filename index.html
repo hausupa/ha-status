@@ -130,15 +130,22 @@
         const isPowerSensor = ["power_total", "speicherkraftwerk", "ecoflow_stream_ac_pro_ladung_entladung", "zendure_solarflow_800_pro_ladung_entladung"].includes(name);
 
         // Farblogik
-        if (isPowerSensor && Math.abs(val) <= 20) {
-            // Bereich von -20 bis 20 Watt (Standby/Grundrauschen) = Weiß
-            el.style.color = "var(--text-main)";
-        } else if (name === "power_total") {
-            // Hauszähler: Negativ (Einspeisung) = Grün, Positiv (Bezug) = Rot
-            el.style.color = val < -20 ? "var(--pos)" : "var(--neg)";
+        if (name === "power_total") {
+            // Hauszähler: Bereich von -50 bis 50 Watt (Standby/Toleranz) = Weiß
+            if (Math.abs(val) <= 50) {
+                el.style.color = "var(--text-main)";
+            } else {
+                // Negativ (Einspeisung) = Grün, Positiv (Bezug) = Rot
+                el.style.color = val < -50 ? "var(--pos)" : "var(--neg)";
+            }
         } else if (isPowerSensor) {
-            // Andere Leistungswerte: Positiv (Erzeugung/Ladung) = Grün, Negativ = Rot
-            el.style.color = val > 20 ? "var(--pos)" : "var(--neg)";
+            // Andere Leistungswerte: Bereich von -20 bis 20 Watt = Weiß
+            if (Math.abs(val) <= 20) {
+                el.style.color = "var(--text-main)";
+            } else {
+                // Positiv (Erzeugung/Ladung) = Grün, Negativ = Rot
+                el.style.color = val > 20 ? "var(--pos)" : "var(--neg)";
+            }
         } else {
             // Batterie SOC: 0-20 Rot, 21-70 Gelb, 71-100 Grün
             if (val <= 20) el.style.color = "var(--neg)";
