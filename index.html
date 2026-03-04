@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --card-bg: #161618;
+            --border: #262626;
+            --text-main: #ffffff;
+            --text-dim: #71717a;
+            --pos: #22c55e;
+            --neg: #ef4444;
+            --warn: #eab308;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.2rem; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 40px; color: var(--text-dim); }
+
+        .section { width: 100%; max-width: 800px; margin-bottom: 40px; }
+        .section-header { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+
+        .card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); text-align: left; position: relative; }
+        .label { color: var(--text-dim); font-size: 0.75rem; margin-bottom: 10px; display: block; }
+        .value-group { display: flex; align-items: baseline; gap: 4px; }
+        .value { font-size: 1.8rem; font-weight: 600; transition: color 0.3s ease; }
+        .unit { font-size: 0.9rem; color: var(--text-dim); }
+
+        .updated-at { font-size: 0.65rem; color: #3f3f46; display: block; margin-top: 8px; }
+
+        #status { font-size: 0.6rem; color: #333; margin-top: 40px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <h1>Dashboard</h1>
+
+    <div class="section">
+        <div class="section-header">Zähler</div>
+        <div class="grid">
+            <div class="card">
+                <span class="label">Haus</span>
+                <div class="value-group"><span id="power_total" class="value">--</span><span class="unit">W</span></div>
+                <span id="power_total_time" class="updated-at">Warte auf Daten...</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-header">Akkuleistung</div>
+        <div class="grid">
+            <div class="card">
+                <span class="label">SKW</span>
+                <div class="value-group"><span id="speicherkraftwerk" class="value">--</span><span class="unit">W</span></div>
+                <span id="speicherkraftwerk_time" class="updated-at">--</span>
+            </div>
+            <div class="card">
+                <span class="label">EcoFlow</span>
+                <div class="value-group"><span id="ecoflow_stream_ac_pro_ladung_entladung" class="value">--</span><span class="unit">W</span></div>
+                <span id="ecoflow_stream_ac_pro_ladung_entladung_time" class="updated-at">--</span>
+            </div>
+            <div class="card">
+                <span class="label">Zendure</span>
+                <div class="value-group"><span id="zendure_solarflow_800_pro_ladung_entladung" class="value">--</span><span class="unit">W</span></div>
+                <span id="zendure_solarflow_800_pro_ladung_entladung_time" class="updated-at">--</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">Akkustand</div>
+        <div class="grid">
+            <div class="card">
+                <span class="label">SKW</span>
+                <div class="value-group"><span id="batterie_soc" class="value">--</span><span class="unit">%</span></div>
+                <span id="batterie_soc_time" class="updated-at">--</span>
+            </div>
+            <div class="card">
+                <span class="label">Ecoflow</span>
+                <div class="value-group"><span id="stream_ac_pro_0949_power_battery_2" class="value">--</span><span class="unit">%</span></div>
+                <span id="stream_ac_pro_0949_power_battery_2_time" class="updated-at">--</span>
+            </div>
+            <div class="card">
+                <span class="label">Zendure</span>
+                <div class="value-group"><span id="solarflow_800_pro_electric_level" class="value">--</span><span class="unit">%</span></div>
+                <span id="solarflow_800_pro_electric_level_time" class="updated-at">--</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="status">System Live</div>
+
+<script>
+    const SUPABASE_URL = 'https://nnccjxvakhpdeawunvto.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uY2NqeHZha2hwZGVhd3VudnRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1ODM5NjYsImV4cCI6MjA4ODE1OTk2Nn0.BxM1enchgk3jcKe5mxEq_g5CIAAyOOrOUYYGZkQ-6XM';
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // Speicher für die Zeitstempel der letzten Updates
+    const lastUpdateTimestamps = {};
+
+    async function fetchInitial() {
+        const { data } = await supabaseClient.from('sensors').select('name, value');
+        if (data) data.forEach(s => updateUI(s.name, s.value));
+    }
+
+    function updateUI(name, rawValue) {
+        const el = document.getElementById(name);
+        if (!el) return;
+
+        // Zeitstempel speichern
+        lastUpdateTimestamps[name] = new Date();
+
+        const val = Math.round(parseFloat(rawValue));
+        el.innerText = isNaN(val) ? '--' : val;
+
+        if (["power_total", "speicherkraftwerk", "ecoflow_stream_ac_pro_ladung_entladung", "zendure_solarflow_800_pro_ladung_entladung"].includes(name)) {
+            el.style.color = val >= 0 ? "var(--pos)" : "var(--neg)";
+        } else {
+            if (val <= 20) el.style.color = "var(--neg)";
+            else if (val <= 70) el.style.color = "var(--warn)";
+            else el.style.color = "var(--pos)";
+        }
+        
+        // Sofortige Aktualisierung des Labels
+        refreshTimeLabels();
+    }
+
+    // Funktion zur Berechnung der relativen Zeit (Home Assistant Style)
+    function refreshTimeLabels() {
+        const now = new Date();
+        for (const [name, lastDate] of Object.entries(lastUpdateTimestamps)) {
+            const timeEl = document.getElementById(name + '_time');
+            if (!timeEl) continue;
+
+            const diffInSeconds = Math.floor((now - lastDate) / 1000);
+            
+            let timeText = "";
+            if (diffInSeconds < 1) timeText = "gerade eben";
+            else if (diffInSeconds < 60) timeText = `vor ${diffInSeconds} Sekunden`;
+            else if (diffInSeconds < 3600) timeText = `vor ${Math.floor(diffInSeconds / 60)} Minuten`;
+            else timeText = `vor ${Math.floor(diffInSeconds / 3600)} Stunden`;
+
+            timeEl.innerText = timeText;
+        }
+    }
+
+    // Timer, der alle Sekunden die Labels aktualisiert
+    setInterval(refreshTimeLabels, 1000);
+
+    supabaseClient
+        .channel('changes')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sensors' }, 
+            payload => updateUI(payload.new.name, payload.new.value)
+        )
+        .subscribe();
+
+    fetchInitial();
+</script>
+</body>
+</html>
