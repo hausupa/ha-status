@@ -15,6 +15,7 @@
             --pos: #22c55e;
             --neg: #ef4444;
             --warn: #eab308;
+            --blue: #3b82f6;
         }
 
         body { 
@@ -43,12 +44,43 @@
 
         .updated-at { font-size: 0.65rem; color: #3f3f46; display: block; margin-top: 8px; }
 
+        /* Status Leuchten Styling */
+        .status-bar { display: flex; gap: 20px; justify-content: center; margin-bottom: 30px; background: #111; padding: 15px; border-radius: 50px; border: 1px solid var(--border); }
+        .status-icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #000; transition: all 0.4s ease; border: 1px solid #222; opacity: 0.15; filter: grayscale(1); }
+        
+        /* Glow Effekte für die aktiven Warnleuchten */
+        .status-icon.active { opacity: 1; filter: grayscale(0); }
+        
+        /* Rot für Automatik pausieren (gross) */
+        .status-icon.active.gross { color: var(--neg); border-color: var(--neg); box-shadow: 0 0 20px rgba(239, 68, 68, 0.35); }
+        /* Grün für Akku Boost (boost) */
+        .status-icon.active.boost { color: var(--pos); border-color: var(--pos); box-shadow: 0 0 20px rgba(34, 197, 94, 0.35); }
+        /* Blau für Wintermodus (winter) */
+        .status-icon.active.winter { color: var(--blue); border-color: var(--blue); box-shadow: 0 0 20px rgba(59, 130, 246, 0.35); }
+
         #status { font-size: 0.6rem; color: #333; margin-top: 40px; text-transform: uppercase; }
+        svg { width: 24px; height: 24px; fill: currentColor; }
     </style>
 </head>
 <body>
 
     <h1>Dashboard</h1>
+
+    <!-- Status Leiste -->
+    <div class="status-bar" id="status_bar">
+        <!-- Automatik pausieren (gross) - Robot-Off Symbol -->
+        <div id="stat_gross" class="status-icon gross" title="Automatik pausieren">
+            <svg viewBox="0 0 24 24"><path d="M22.11,21.46L2.39,1.73L1.11,3L4.4,6.29C4.15,6.66 4,7.11 4,7.6V12C4,13.11 4.89,14 6,14V17C6,18.11 6.89,19 8,19H16C16.36,19 16.69,18.91 16.97,18.75L20.84,22.62L22.11,21.35L22.11,21.46M14,12H11.11L8.22,9.11L14,14.89V12M15,4H9C8.34,4 7.77,4.32 7.41,4.82L5.9,3.31C6.7,2.81 7.66,2.5 8.7,2.5H15.3C16.34,2.5 17.3,2.81 18.1,3.31L16.59,4.82C16.23,4.32 15.66,4 15,4M18,7.6V12H16V7.6C16,7.11 15.85,6.66 15.6,6.29L17.11,4.78C17.65,5.43 18,6.26 18,7.6M12,9H14V11H12V9M8,9H10V11H8V9M12,14H8V12H10.11L12.11,14.11L12,14Z" /></svg>
+        </div>
+        <!-- Akku Boost (boost) - Battery Charging Symbol -->
+        <div id="stat_boost" class="status-icon boost" title="Akku Boost">
+            <svg viewBox="0 0 24 24"><path d="M12 20H4V6H12M12.67 4H11V2H5V4H3.33C2.59 4 2 4.6 2 5.33V20.67C2 21.4 2.59 22 3.33 22H12.67C13.41 22 14 21.4 14 20.67V5.33C14 4.6 13.41 4 12.67 4M11.23 11.5L8.5 17L9 12.5H6.84L9.57 7L9.1 11.5H11.23Z" /></svg>
+        </div>
+        <!-- Wintermodus (winter) - Schneeflocke Symbol -->
+        <div id="stat_winter" class="status-icon winter" title="Wintermodus">
+            <svg viewBox="0 0 24 24"><path d="M22,11H19.06l1.71-1.71L19.35,7.87,16.22,11H13V7.78l3.13-3.13L14.71,3.23,13,4.94V2H11V4.94L9.29,3.23,7.87,4.65,11,7.78V11H7.78L4.65,7.87,3.23,9.29,4.94,11H2v2H4.94l-1.71,1.71,1.42,1.42L7.78,13H11v3.22L7.87,19.35l1.42,1.42L11,19.06V22h2V19.06l1.71,1.71,1.42-1.42L13,16.22V13h3.22l3.13,3.13,1.42-1.42L19.06,13H22V11Z" /></svg>
+        </div>
+    </div>
 
     <div class="section">
         <div class="section-header">Zähler</div>
@@ -56,7 +88,7 @@
             <div class="card">
                 <span class="label">Haus</span>
                 <div class="value-group"><span id="power_total" class="value">--</span><span class="unit">W</span></div>
-                <span id="power_total_time" class="updated-at">Warte auf Daten...</span>
+                <span id="power_total_time" class="updated-at">Warte...</span>
             </div>
         </div>
     </div>
@@ -110,7 +142,6 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uY2NqeHZha2hwZGVhd3VudnRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1ODM5NjYsImV4cCI6MjA4ODE1OTk2Nn0.BxM1enchgk3jcKe5mxEq_g5CIAAyOOrOUYYGZkQ-6XM';
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    
     const lastUpdateTimestamps = {};
 
     async function fetchInitial() {
@@ -119,40 +150,36 @@
     }
 
     function updateUI(name, rawValue) {
+        if (name === "system_states") {
+            try {
+                const states = JSON.parse(rawValue);
+                document.getElementById('stat_gross').classList.toggle('active', states.gross === 'on');
+                document.getElementById('stat_boost').classList.toggle('active', states.boost === 'on');
+                document.getElementById('stat_winter').classList.toggle('active', states.winter === 'on');
+            } catch (e) { console.error("JSON Error", e); }
+            return;
+        }
+
         const el = document.getElementById(name);
         if (!el) return;
 
         lastUpdateTimestamps[name] = new Date();
-
         const val = Math.round(parseFloat(rawValue));
         el.innerText = isNaN(val) ? '--' : val;
 
         const isPowerSensor = ["power_total", "speicherkraftwerk", "ecoflow_stream_ac_pro_ladung_entladung", "zendure_solarflow_800_pro_ladung_entladung"].includes(name);
 
-        // Farblogik
         if (name === "power_total") {
-            // Hauszähler: Bereich von -50 bis 50 Watt (Standby/Toleranz) = Weiß
-            if (Math.abs(val) <= 50) {
-                el.style.color = "var(--text-main)";
-            } else {
-                // Negativ (Einspeisung) = Grün, Positiv (Bezug) = Rot
-                el.style.color = val < -50 ? "var(--pos)" : "var(--neg)";
-            }
+            if (Math.abs(val) <= 50) el.style.color = "var(--text-main)";
+            else el.style.color = val < -50 ? "var(--pos)" : "var(--neg)";
         } else if (isPowerSensor) {
-            // Andere Leistungswerte: Bereich von -20 bis 20 Watt = Weiß
-            if (Math.abs(val) <= 20) {
-                el.style.color = "var(--text-main)";
-            } else {
-                // Positiv (Erzeugung/Ladung) = Grün, Negativ = Rot
-                el.style.color = val > 20 ? "var(--pos)" : "var(--neg)";
-            }
+            if (Math.abs(val) <= 20) el.style.color = "var(--text-main)";
+            else el.style.color = val > 20 ? "var(--pos)" : "var(--neg)";
         } else {
-            // Batterie SOC: 0-20 Rot, 21-70 Gelb, 71-100 Grün
             if (val <= 20) el.style.color = "var(--neg)";
             else if (val <= 70) el.style.color = "var(--warn)";
             else el.style.color = "var(--pos)";
         }
-        
         refreshTimeLabels();
     }
 
@@ -161,28 +188,20 @@
         for (const [name, lastDate] of Object.entries(lastUpdateTimestamps)) {
             const timeEl = document.getElementById(name + '_time');
             if (!timeEl) continue;
-
-            const diffInSeconds = Math.floor((now - lastDate) / 1000);
-            
+            const diff = Math.floor((now - lastDate) / 1000);
             let timeText = "";
-            if (diffInSeconds < 1) timeText = "gerade eben";
-            else if (diffInSeconds < 60) timeText = `vor ${diffInSeconds} Sekunden`;
-            else if (diffInSeconds < 3600) timeText = `vor ${Math.floor(diffInSeconds / 60)} Minuten`;
-            else timeText = `vor ${Math.floor(diffInSeconds / 3600)} Stunden`;
-
+            if (diff < 1) timeText = "gerade eben";
+            else if (diff < 60) timeText = `vor ${diff}s`;
+            else if (diff < 3600) timeText = `vor ${Math.floor(diff/60)}m`;
+            else timeText = `vor ${Math.floor(diff/3600)}h`;
             timeEl.innerText = timeText;
         }
     }
 
     setInterval(refreshTimeLabels, 1000);
-
-    supabaseClient
-        .channel('changes')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sensors' }, 
-            payload => updateUI(payload.new.name, payload.new.value)
-        )
-        .subscribe();
-
+    supabaseClient.channel('changes').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sensors' }, 
+        payload => updateUI(payload.new.name, payload.new.value)
+    ).subscribe();
     fetchInitial();
 </script>
 </body>
